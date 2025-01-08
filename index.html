@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watermark Pictures</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+        }
+        .image-container img {
+            max-width: 300px;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Watermark Pictures</h1>
+
+    <input type="file" id="imageUpload" multiple accept="image/*">
+    <input type="text" id="watermarkText" placeholder="Enter Watermark Text">
+    <input type="number" id="rotationAngle" placeholder="Enter Rotation Angle (default: 45)" step="1">
+    <button id="applyWatermark">Apply Watermark</button>
+    <button id="downloadImages">Download Watermarked Images</button>
+
+    <div class="image-preview" id="imagePreview"></div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const watermarkText = document.getElementById('watermarkText');
+        const rotationAngle = document.getElementById('rotationAngle');
+        const applyWatermark = document.getElementById('applyWatermark');
+        const downloadImages = document.getElementById('downloadImages');
+        const imagePreview = document.getElementById('imagePreview');
+
+        let images = [];
+
+        imageUpload.addEventListener('change', (event) => {
+            const files = event.target.files;
+            images = [];
+            imagePreview.innerHTML = '';
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        images.push({ file, img });
+                        displayImage(img);
+                    };
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        function displayImage(img) {
+            const container = document.createElement('div');
+            container.classList.add('image-container');
+
+            const imageElement = document.createElement('img');
+            imageElement.src = img.src;
+
+            container.appendChild(imageElement);
+            imagePreview.appendChild(container);
+        }
+
+        applyWatermark.addEventListener('click', () => {
+            const watermark = watermarkText.value;
+            const angle = parseInt(rotationAngle.value) || 45; // Default to 45 degrees if no input is provided
+
+            imagePreview.innerHTML = '';
+            images.forEach(({ img }) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                ctx.drawImage(img, 0, 0);
+
+                // Rotate the canvas for angled watermark
+                ctx.save(); // Save the current state
+                ctx.translate(canvas.width / 2, canvas.height / 2); // Move origin to the center
+                ctx.rotate((-angle * Math.PI) / 180); // Rotate by user-defined degrees
+
+                // Set watermark properties
+                ctx.font = '50px Arial'; // Adjust font size as needed
+                ctx.fillStyle = 'rgba(144, 238, 144, 0.3)'; // Light green with opacity
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Draw the watermark text
+                ctx.fillText(watermark, 0, 0);
+
+                ctx.restore(); // Restore the original state
+
+                const watermarkedImg = new Image();
+                watermarkedImg.src = canvas.toDataURL();
+                displayImage(watermarkedImg);
+
+                images = images.map(image => {
+                    if (image.img === img) {
+                        return { ...image, watermarkedImg };
+                    }
+                    return image;
+                });
+            });
+        });
+
+        downloadImages.addEventListener('click', () => {
+            images.forEach(({ file, watermarkedImg }) => {
+                const a = document.createElement('a');
+                a.href = watermarkedImg.src;
+                a.download = `${file.name.replace(/\.[^/.]+$/, '')}_watermarked.png`;
+                a.click();
+            });
+        });
+    </script>
+</body>
+</html>
